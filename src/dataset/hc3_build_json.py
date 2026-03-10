@@ -5,7 +5,7 @@ from nltk.tokenize import sent_tokenize
 nltk.download("punkt_tab", quiet=True)
 
 # Load keywords from keywords.json
-keywords_file_path = "keywords.json"
+keywords_file_path = "../../datasets/keywords.json"
 with open(keywords_file_path) as f:
     keywords_data = json.load(f)
 
