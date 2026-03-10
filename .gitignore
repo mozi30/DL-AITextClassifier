@@ -63,7 +63,6 @@ events.out.tfevents.*
 
 # Large datasets
 data/
-datasets/
 
 # =========================
 # OS files
@@ -86,3 +85,5 @@ htmlcov/
 *.temp
 *.swp
 *.swo
+
+datasets/*/all.json
