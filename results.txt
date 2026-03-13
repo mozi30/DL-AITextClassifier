@@ -1,0 +1,12 @@
+Epoch 030 | train_loss=1.4278 train_acc=0.5387 | val_loss=1.4393 val_acc=0.4997
+Evaluating on test set...
+Test accuracy: 0.4693333333333333
+Saving model...
+Model saved to models\tfidf_logreg_size30000_features5000.pkl
+size:  30000
+max_features:  5000
+ngram_range:  (1, 2)
+mind_df:  2
+lr:  0.2
+epochs:  30
+
