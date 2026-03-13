@@ -10,3 +10,31 @@ mind_df:  2
 lr:  0.2
 epochs:  30
 
+Epoch 030 | train_loss=1.3636 train_acc=0.5592 | val_loss=1.3795 val_acc=0.5326
+Evaluating on test set...
+Test accuracy: 0.5285
+Saving model...
+Model saved to models\tfidf_logreg_size100000_features20000.pkl
+size:  100000
+max_features:  20000
+ngram_range:  (1, 2)
+mind_df:  2
+lr:  0.2
+epochs:  30
+
+
+Epoch 030 | train_loss=1.1703 train_acc=0.6150 | val_loss=1.1951 val_acc=0.5923
+Evaluating on test set...
+Test accuracy: 0.5881
+Saving model...
+Model saved to models\tfidf_logreg_size100000_word10000_char10000.pkl
+Experiment configuration:
+size: 100000
+word_max_features: 10000
+char_max_features: 10000
+word_ngram_range: (1, 2)
+char_ngram_range: (3, 5)
+min_df: 2
+lr: 0.2
+epochs: 30
+

@@ -12,11 +12,12 @@ class TfIdfVectorizerNumpy:
     #   tokens = ["this", "is", "good"]
     #       unigrams: ["this", "is", "good"]
     #       bigrams: ["this is", "is good"]
-    def __init__(self, max_features=5000, min_df=2, ngram_range=(1, 2), lowercase=True):
+    def __init__(self, max_features=5000, min_df=2, ngram_range=(1, 2), lowercase=True, analyzer="word"):
         self.max_features = max_features
         self.min_df = min_df
         self.ngram_range = ngram_range
         self.lowercase = lowercase
+        self.analyzer = analyzer
 
         self.vocab = {}
         self.idf = None
@@ -31,17 +32,48 @@ class TfIdfVectorizerNumpy:
         tokens = re.findall(r"\b\w+\b", text)
         return tokens
 
-    # From: tokens = ["this", "is", "ai"] ngram_range = (1,2)
-    # To: ["this", "is", "ai", "this is", "is ai"]
-    def _generate_ngrams(self, tokens):
+    # Generate n-gram features from the input text.
+    # Behavior depends on the "analyzer" setting:
+    #
+    # analyzer = "word"
+    #   Generates word-based n-grams from the token list.
+    #   Example:
+    #       tokens = ["this", "is", "ai"]
+    #       ngram_range = (1,2)
+    #   Output:
+    #       ["this", "is", "ai", "this is", "is ai"]
+    #
+    # analyzer = "char"
+    #   Generates character-based n-grams directly from the raw text string.
+    #   Example:
+    #       text = "text"
+    #       ngram_range = (3,4)
+    #   Output:
+    #       ["tex", "ext", "text"]
+    def _generate_ngrams(self, text, tokens):
+
         feats = []
         min_n, max_n = self.ngram_range
 
-        for n in range(min_n, max_n + 1):
-            if n == 1:
-                feats.extend(tokens)
-            else:
-                feats.extend([" ".join(tokens[i:i+n]) for i in range(len(tokens) - n + 1)])
+        # WORD NGRAMS
+        if self.analyzer == "word":
+            for n in range(min_n, max_n + 1):
+                if n == 1:
+                    feats.extend(tokens)
+                else:
+                    feats.extend(
+                        [" ".join(tokens[i:i + n]) for i in range(len(tokens) - n + 1)]
+                    )
+
+        # CHARACTER NGRAMS
+        elif self.analyzer == "char":
+            text = text.lower()
+
+            for n in range(min_n, max_n + 1):
+                feats.extend(
+                    [text[i:i + n] for i in range(len(text) - n + 1)]
+                )
+
         return feats
 
     def fit(self, texts):
@@ -52,7 +84,7 @@ class TfIdfVectorizerNumpy:
         # collect document frequency and global term frequency
         for text in texts:
             tokens = self._tokenize(text)
-            feats = self._generate_ngrams(tokens)
+            feats = self._generate_ngrams(text, tokens)
 
             unique_terms = set(feats) # each termn counts only once per document
             doc_freq.update(unique_terms)
@@ -93,7 +125,7 @@ class TfIdfVectorizerNumpy:
         # fill term frequencies
         for i, text in enumerate(texts):
             tokens = self._tokenize(text)
-            feats = self._generate_ngrams(tokens)
+            feats = self._generate_ngrams(text, tokens)
             counts = Counter(feats)
 
             # X[i, idx] contains raw term counts

@@ -36,23 +36,40 @@ print(y_test)
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-# Run TF_IDF -----------------------------------------------------------------------------------------------------------
-vectorizer = TfIdfVectorizerNumpy(
+# WORD N-GRAM TF-IDF ---------------------------------------------------------------------------------------------------
+vectorizer_word = TfIdfVectorizerNumpy(
     max_features=3000,
     min_df=2,
-    ngram_range=(1,2)
+    ngram_range=(1,2),
+    analyzer="word"
 )
 
-print("Building TF-IDF...")
+print("Building WORD TF-IDF...")
 
-X_train = vectorizer.fit_transform(X_train_text)
-X_val = vectorizer.transform(X_val_text)
-X_test = vectorizer.transform(X_test_text)
+X_train_word = vectorizer_word.fit_transform(X_train_text)
+X_val_word = vectorizer_word.transform(X_val_text)
+X_test_word = vectorizer_word.transform(X_test_text)
 
-# shape: (rows, columns)
-#   rows = documents
-#   columns = vocabulary features
-print("Train shape:", X_train.shape)
-print("Val shape:", X_val.shape)
-print("Test shape:", X_test.shape)
+print("Word Train shape:", X_train_word.shape)
+print("Word Val shape:", X_val_word.shape)
+print("Word Test shape:", X_test_word.shape)
+# ----------------------------------------------------------------------------------------------------------------------
+
+# CHARACTER N-GRAM TF-IDF ----------------------------------------------------------------------------------------------
+vectorizer_char = TfIdfVectorizerNumpy(
+    max_features=3000,
+    min_df=2,
+    ngram_range=(3,5),
+    analyzer="char"
+)
+
+print("Building CHAR TF-IDF...")
+
+X_train_char = vectorizer_char.fit_transform(X_train_text)
+X_val_char = vectorizer_char.transform(X_val_text)
+X_test_char = vectorizer_char.transform(X_test_text)
+
+print("Char Train shape:", X_train_char.shape)
+print("Char Val shape:", X_val_char.shape)
+print("Char Test shape:", X_test_char.shape)
 # ----------------------------------------------------------------------------------------------------------------------
