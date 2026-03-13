@@ -54,7 +54,6 @@ logs/
 # Deep Learning / ML files
 # =========================
 checkpoints/
-models/
 weights/
 runs/
 wandb/

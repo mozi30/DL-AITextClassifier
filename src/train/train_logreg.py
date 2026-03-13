@@ -1,6 +1,8 @@
 import numpy as np
 import pickle
 from pathlib import Path
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
 
 from src.dataloader.dataloader import SentenceDataModule
 from src.tfidf.tfidf import TfIdfVectorizerNumpy
@@ -10,16 +12,16 @@ from src.models.logreg import SoftmaxLogReg
 # Hyperparameters --------------------------------------------------------------------------------
 size = 100000
 
-word_max_features = 10000
-char_max_features = 10000
+word_max_features = 15000
+char_max_features = 15000
 
 min_df = 2
 
 word_ngram_range = (1,2)
-char_ngram_range = (3,5)
+char_ngram_range = (2,6)
 
-lr = 0.2
-epochs = 30
+lr = 0.3
+epochs = 40
 # -----------------------------------------------------------------------------------------------
 
 MODEL_PATH = Path(
@@ -105,10 +107,25 @@ def main():
     X_train = np.hstack([X_train_word, X_train_char])
     X_val = np.hstack([X_val_word, X_val_char])
     X_test = np.hstack([X_test_word, X_test_char])
-
     print("Combined feature shape:", X_train.shape)
     # --------------------------------------------------------------------------------------------
 
+    # ADD LENGTH FEATURE -------------------------------------------------------------------------
+    length_train = np.array([len(t) for t in X_train_text]).reshape(-1, 1)
+    length_val = np.array([len(t) for t in X_val_text]).reshape(-1, 1)
+    length_test = np.array([len(t) for t in X_test_text]).reshape(-1, 1)
+
+    # normalize length (so scale matches TF-IDF values)
+    length_train = length_train / 200
+    length_val = length_val / 200
+    length_test = length_test / 200
+
+    X_train = np.hstack([X_train, length_train])
+    X_val = np.hstack([X_val, length_val])
+    X_test = np.hstack([X_test, length_test])
+
+    print("Feature shape with length:", X_train.shape)
+    # -------------------------------------------------------------------------------------------
 
     print("Training classifier...")
 
@@ -132,15 +149,14 @@ def main():
     preds = clf.predict(X_test)
     acc = np.mean(preds == y_test)
 
+    # print(confusion_matrix(y_test, preds))
+    # print(classification_report(y_test, preds))
+
     print("Test accuracy:", acc)
-
-
-    print("Saving model...")
 
     save_model(clf, word_vectorizer, char_vectorizer, MODEL_PATH)
 
     print("Model saved to", MODEL_PATH)
-
 
     print("\nExperiment configuration:")
     print("size:", size)

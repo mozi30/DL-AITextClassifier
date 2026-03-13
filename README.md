@@ -77,7 +77,7 @@ tokenization
  ↓
 TF-IDF feature extraction
     • word n-grams (1–2)
-    • character n-grams (3–5)
+    • character n-grams (2–6)
  ↓
 feature concatenation
  ↓
@@ -110,16 +110,9 @@ Two TF-IDF feature spaces are constructed.
 Example:
 
 ```
-tokens = ["this", "is", "ai"]
-
-unigrams:
-this
-is
-ai
-
-bigrams:
-this is
-is ai
+tokens = ["this", "is", "ai"] 
+unigrams: "this" "is" "ai"
+bigrams: "this is" "is ai"
 ```
 
 ##### Character n-grams
@@ -131,16 +124,9 @@ Example:
 
 ```
 text = "text"
-
-3-grams:
-tex
-ext
-
-4-grams:
-text
+3-grams: "tex" "ext"
+4-grams: "text"
 ```
-
-Character features are particularly useful for **LLM detection**, because models often have subtle stylistic signatures.
 
 ---
 
@@ -229,18 +215,11 @@ DL-AITextClassifier
 └── README.md
 ```
 
-| Directory | Purpose |
-|----------|--------|
-| `datasets/` | merged dataset files |
-| `models/` | saved trained models |
-| `src/` | implementation code |
-| `tests/` | unit tests for components |
-
 ---
 
 ### Training
 
-Run the training pipeline with:
+Run the training pipeline with and set the hyperparameters in this file:
 
 ```
 python -m src.train.train_logreg
@@ -258,19 +237,21 @@ This will:
 
 ### Baseline Performance
 
-Typical configuration:
+Current best result with this configuration:
 
 ```
 dataset size: 100000
-word features: 10000
-char features: 10000
-epochs: 30
+word features: 15000
+char features: 15000
+epochs: 40
+word_ngram_range = (1,2)
+char_ngram_range = (2,6)
+lr = 0.3
 ```
 
-Expected accuracy:
+Test accuracy:
 
 ```
-≈ 0.60 – 0.70
+≈ 0.61
 ```
 
-This provides a strong classical baseline before experimenting with deeper models.
