@@ -159,7 +159,8 @@ class SentenceDataModule:
         num_samples = len(samples)
 
         train_end = int(num_samples * float(self.split[0])/100)
-        val_end = int(num_samples * float(self.split[0])/100 + float(self.split[1])/100)
+        val_end = int(num_samples * (self.split[0] + self.split[1]) / 100)
+        # val_end = int(num_samples * float(self.split[0])/100 + float(self.split[1])/100)
 
         self.train_samples = samples[:train_end]
         self.val_samples = samples[train_end:val_end]

@@ -3,7 +3,7 @@ import pandas as pd
 
 dataset = load_dataset("MLNTeam-Unical/OpenTuringBench", "in_domain")
 
-df = dataset["train"].to_pandas()
+df = dataset["models"].to_pandas()
 
 df.to_json("datasets/otb/all.json", orient="records", indent=2)
 
@@ -13,7 +13,7 @@ print(df.head())
 #
 # records = []
 #
-# for row in dataset["train"]:
+# for row in dataset["models"]:
 #
 #     text = row["text"]
 #

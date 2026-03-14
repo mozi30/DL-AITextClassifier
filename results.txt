@@ -1,0 +1,73 @@
+Epoch 030 | train_loss=1.4278 train_acc=0.5387 | val_loss=1.4393 val_acc=0.4997
+Evaluating on test set...
+Test accuracy: 0.4693333333333333
+Saving model...
+Model saved to models\tfidf_logreg_size30000_features5000.pkl
+size:  30000
+max_features:  5000
+ngram_range:  (1, 2)
+mind_df:  2
+lr:  0.2
+epochs:  30
+
+Epoch 030 | train_loss=1.3636 train_acc=0.5592 | val_loss=1.3795 val_acc=0.5326
+Evaluating on test set...
+Test accuracy: 0.5285
+Saving model...
+Model saved to models\tfidf_logreg_size100000_features20000.pkl
+size:  100000
+max_features:  20000
+ngram_range:  (1, 2)
+mind_df:  2
+lr:  0.2
+epochs:  30
+
+
+Epoch 030 | train_loss=1.1703 train_acc=0.6150 | val_loss=1.1951 val_acc=0.5923
+Evaluating on test set...
+Test accuracy: 0.5881
+Saving model...
+Model saved to models\tfidf_logreg_size100000_word10000_char10000.pkl
+Experiment configuration:
+size: 100000
+word_max_features: 10000
+char_max_features: 10000
+word_ngram_range: (1, 2)
+char_ngram_range: (3, 5)
+min_df: 2
+lr: 0.2
+epochs: 30
+
+
+Epoch 040 | train_loss=1.1843 train_acc=0.6275 | val_loss=1.2228 val_acc=0.5737
+Evaluating on test set...
+Test accuracy: 0.5473333333333333
+Model saved to models\tfidf_logreg_size30000_word15000_char15000.pkl
+Experiment configuration:
+size: 30000
+word_max_features: 15000
+char_max_features: 15000
+word_ngram_range: (1, 2)
+char_ngram_range: (2, 6)
+min_df: 2
+lr: 0.3
+epochs: 40
+
+
+Epoch 040 | train_loss=1.1146 train_acc=0.6501 | val_loss=1.1485 val_acc=0.6229
+Evaluating on test set...
+Test accuracy: 0.6171
+Model saved to models\tfidf_logreg_size100000_word15000_char15000.pkl
+
+Experiment configuration:
+size: 100000
+word_max_features: 15000
+char_max_features: 15000
+word_ngram_range: (1, 2)
+char_ngram_range: (2, 6)
+min_df: 2
+lr: 0.3
+epochs: 40
+
+
+
