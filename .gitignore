@@ -63,6 +63,9 @@ events.out.tfevents.*
 # Large datasets
 data/
 
+# Cache files
+cache/
+
 # =========================
 # OS files
 # =========================
