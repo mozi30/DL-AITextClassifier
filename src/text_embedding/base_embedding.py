@@ -14,3 +14,11 @@ class BaseEmbedding:
     @abstractmethod
     def update_embedding(self, word: str, gradient: np.ndarray, lr: float):
         raise NotImplementedError
+    
+    @abstractmethod
+    def cache_embedding(self, path:str):
+        raise NotImplementedError
+    
+    @abstractmethod
+    def load_embedding_cache(self, path:str):
+        raise NotImplementedError

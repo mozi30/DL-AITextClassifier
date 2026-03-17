@@ -21,7 +21,9 @@ class NeuralNetwork:
                  lr_patience=2,
                  lr_decay_factor=0.5,
                  min_learning_rate=1e-5,
-                 restore_best_weights=True):
+                 restore_best_weights=True,
+                 num_train_epoch_batches: int | None = None,
+                 num_val_epoch_batches: int | None = None):
         self.train_loader = datamodule.get_train_loader()
         self.val_loader = datamodule.get_val_loader()
         self.test_loader = datamodule.get_test_loader()
@@ -36,6 +38,8 @@ class NeuralNetwork:
         self.lr_decay_factor = lr_decay_factor
         self.min_learning_rate = min_learning_rate
         self.restore_best_weights = restore_best_weights
+        self.num_train_epoch_batches = num_train_epoch_batches
+        self.num_val_epoch_batches = num_val_epoch_batches
 
         self.layers = []
         self.history = {}
@@ -67,6 +71,7 @@ class NeuralNetwork:
         assert self.batch_size <= n_samples, "Batch size cannot be greater than the number of samples"
         if shuffle:
             np.random.shuffle(indices)
+        batch_num = 0
         for start in range(0, n_samples, self.batch_size):
             batch_indices = indices[start:start + self.batch_size]
             batch_samples = [loader[int(index)] for index in batch_indices]
@@ -92,9 +97,21 @@ class NeuralNetwork:
     def _evaluate_loader(self, loader: SentenceDataLoader):
         outputs = []
         labels = []
+        i = 1
         for X_batch, y_batch in self.get_dataload_mini_batch(loader, shuffle=False):
+            if self.num_val_epoch_batches:
+                print(f"Val Batch: {i} of {self.num_val_epoch_batches}", end="\r")
+            else:
+                print(f"Val Batch: {i} of {len(loader)/self.batch_size}", end="\r")
+            i = i + 1
             outputs.append(self.forward_propagation(X_batch, training=False))
             labels.append(y_batch)
+            if self.num_val_epoch_batches != None:
+                if i >= self.num_val_epoch_batches:
+                    break
+        
+            
+            
 
         if not outputs:
             return None, None
@@ -121,14 +138,22 @@ class NeuralNetwork:
         for epoch in range(1, self.epochs + 1):
             batch_outputs = []
             batch_labels = []
-
+            i = 1
             for X_batch, y_batch in self.get_dataload_mini_batch(self.train_loader):
+                if self.num_train_epoch_batches:
+                    print(f"Train Batch: {i} of {self.num_train_epoch_batches}", end="\r")
+                else:
+                    print(f"Train Batch: {i} of {len(self.train_loader)/self.batch_size}", end="\r")
+                i = i + 1
                 output = self.forward_propagation(X_batch, training=True)
                 error = self.loss.derivative(y_batch, output)
                 self.backward_propagation(error)
-
                 batch_outputs.append(output)
                 batch_labels.append(y_batch)
+                if self.num_train_epoch_batches != None:
+                    if i >= self.num_train_epoch_batches:
+                        break
+            print("\n")
 
             output_x_all = np.concatenate(batch_outputs)
             y_all = np.concatenate(batch_labels)
@@ -136,6 +161,7 @@ class NeuralNetwork:
             train_loss = self.loss.loss(y_all, output_x_all)
             train_metric = self.metric(y_all, output_x_all) if self.metric is not None else None
             val_loss, val_metric = self._evaluate_loader(self.val_loader)
+            
 
             self.history[epoch] = {
                 "train_loss": train_loss,
