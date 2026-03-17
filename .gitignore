@@ -89,3 +89,5 @@ htmlcov/
 *.swo
 
 datasets/*/all.json
+# Generated large dataset artifacts
+datasets/records_long.json

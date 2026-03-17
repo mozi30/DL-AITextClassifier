@@ -38,6 +38,22 @@ https://huggingface.co/datasets/gsingh1-py/train
 
 **Total samples:** 379032
 
+### Entries (`records_long.json`)
+
+- mistral: 80,999
+- chatgpt: 35,167
+- gemma: 69,056
+- llama: 85,616
+- human: 49,517
+
+### From Sources
+
+- HC3 samples: 84,684 
+- OTB samples: 235,671
+
+**Total samples:** 320,355
+
+
 ---
 
 ## Dataset Scheme (`scheme.json`)
