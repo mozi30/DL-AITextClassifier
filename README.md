@@ -251,6 +251,42 @@ This will:
 
 ---
 
+## Build Datasets With One Script
+
+Use one script to generate `datasets/records_long.json` end-to-end:
+
+```bash
+python src/dataset/build_all_records.py
+```
+
+What this script does:
+
+- builds source-specific intermediate files:
+  - `datasets/hc3/hc3-records.json`
+  - `datasets/gsingh1/gsingh1-records.json` (only if source exists)
+  - `datasets/otb/otb-records.json`
+- writes final long-text dataset to:
+  - `datasets/records_long.json`
+- keeps only records where word count satisfies:
+  - `min_words < words < max_words` (defaults: 80 and 200)
+
+Optional flags:
+
+```bash
+# Download OTB/GSINGH1 source files first (when available)
+python src/dataset/build_all_records.py --download-sources
+
+# Custom long-text word range
+python src/dataset/build_all_records.py --min-words 100 --max-words 220
+```
+
+Download behavior:
+
+- if `datasets/otb/all.json` already exists, OTB download is skipped
+- if `datasets/gsingh1/all.json` already exists, GSINGH1 download is skipped
+
+---
+
 ### Baseline Performance
 
 Current best result with this configuration:
