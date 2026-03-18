@@ -185,7 +185,7 @@ def build_hc3_records(
     return output_records
 
 
-def build_model_dataset_records(
+def build_otb_records(
     input_path: Path,
     text_key: str,
     model_key: str,
@@ -221,6 +221,70 @@ def build_model_dataset_records(
                     "length": len(p),
                 }
             )
+
+    write_json(output_path, records)
+    return records
+
+
+def build_gsingh1_records(
+    input_path: Path,
+    keywords: dict[str, list[str]],
+    output_path: Path,
+    min_words: int,
+    max_words: int,
+) -> list[dict]:
+
+    with input_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    records = []
+
+    for row in data:
+
+        prompt = str(row.get("prompt", ""))
+
+        # --- HUMAN ---
+        human_text = clean_text(row.get("Human_story", ""))
+        passages = build_passages(split_sentences(human_text), min_words, max_words)
+
+        for p in passages:
+            topic = classify_topic(p, keywords)
+            if topic == "unknown":
+                continue
+
+            records.append({
+                "model": "human",
+                "text": p,
+                "topic": topic,
+                "origin": "gsingh1",
+                "length": len(p),
+            })
+
+        # --- MODELS ---
+        for key, value in row.items():
+
+            if key in ["prompt", "Human_story"]:
+                continue
+
+            model = map_model(key)
+            if model is None:
+                continue
+
+            text = clean_text(str(value))
+            passages = build_passages(split_sentences(text), min_words, max_words)
+
+            for p in passages:
+                topic = classify_topic(p, keywords)
+                if topic == "unknown":
+                    continue
+
+                records.append({
+                    "model": model,
+                    "text": p,
+                    "topic": topic,
+                    "origin": "gsingh1",
+                    "length": len(p),
+                })
 
     write_json(output_path, records)
     return records
@@ -297,21 +361,18 @@ def main() -> int:
     gsingh1_records: list[dict] = []
     if gsingh1_all.exists():
         print("Building GSINGH1 records...")
-        gsingh1_records = build_model_dataset_records(
+        gsingh1_records = build_gsingh1_records(
             gsingh1_all,
-            text_key="text",
-            model_key="model",
-            origin="gsingh1",
-            keywords=keywords,
-            output_path=gsingh1_records_path,
-            min_words=args.min_words,
-            max_words=args.max_words,
+            keywords,
+            gsingh1_records_path,
+            args.min_words,
+            args.max_words,
         )
     else:
         print(f"Warning: skipping GSINGH1 build because source file is missing: {gsingh1_all}")
 
     print("Building OTB records...")
-    otb_records = build_model_dataset_records(
+    otb_records = build_otb_records(
         otb_all,
         text_key="content",
         model_key="model",
