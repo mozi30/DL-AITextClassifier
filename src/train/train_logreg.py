@@ -10,10 +10,10 @@ from src.models.logreg import SoftmaxLogReg
 
 
 # Hyperparameters --------------------------------------------------------------------------------
-size = 100000
+size = 5000
 
-word_max_features = 15000
-char_max_features = 15000
+word_max_features = 10000
+char_max_features = 10000
 
 min_df = 2
 
@@ -25,27 +25,38 @@ epochs = 40
 # -----------------------------------------------------------------------------------------------
 
 MODEL_PATH = Path(
-    f"models/tfidf_logreg_size{size}_word{word_max_features}_char{char_max_features}.pkl"
+    f"models/tfidf_logreg_size{size}_word{word_max_features}_char{char_max_features}_LONG.pkl"
 )
 
 
-def save_model(model, word_vectorizer, char_vectorizer, path):
-    path.parent.mkdir(exist_ok=True)
+def save_model(model, word_vectorizer, char_vectorizer, path, config, label_to_id, save_full_model=True):
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    data = {
+        # manual parameters (robust)
+        "W": model.W,
+        "b": model.b,
+
+        # vectorizers
+        "word_vocab": word_vectorizer.vocab,
+        "word_idf": word_vectorizer.idf,
+
+        "char_vocab": char_vectorizer.vocab,
+        "char_idf": char_vectorizer.idf,
+
+        # metadata
+        "config": config,
+        "label_to_id": label_to_id,
+    }
+
+    # optionally store full model
+    if save_full_model:
+        data["model"] = model
 
     with open(path, "wb") as f:
-        pickle.dump(
-            {
-                "W": model.W,
-                "b": model.b,
+        pickle.dump(data, f)
 
-                "word_vocab": word_vectorizer.vocab,
-                "word_idf": word_vectorizer.idf,
-
-                "char_vocab": char_vectorizer.vocab,
-                "char_idf": char_vectorizer.idf,
-            },
-            f,
-        )
+    print(f"Model saved to: {path}")
 
 
 def main():
@@ -53,7 +64,7 @@ def main():
     print("Loading dataset...")
 
     dm = SentenceDataModule(
-        record_path="datasets/records.json",
+        record_path="datasets/records_long.json",
         size=size,
         split=(70, 20, 10),
     )

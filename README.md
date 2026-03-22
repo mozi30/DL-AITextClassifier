@@ -1,9 +1,11 @@
-
 # AITextClassifier
 
 AITextClassifier is a project for detecting whether a text was written by a **human or by a large language model (LLM)** and, if generated, identifying **which model produced it**.
 
-The current implementation uses a **TF-IDF based feature representation combined with a multiclass logistic regression classifier implemented in NumPy**.
+The current project contains:
+- a **TF-IDF + multiclass logistic regression baseline implemented in NumPy**
+- a **TF-IDF + logistic regression implementation in PyTorch**
+- additional experiments for **embeddings + bidirectional LSTM**
 
 ---
 
@@ -20,39 +22,67 @@ https://huggingface.co/datasets/gsingh1-py/train
 
 ---
 
-## Current Data
+## Build Datasets With One Script
 
-### Entries (`records.json`)
+Use one script to generate `datasets/records_long.json` end-to-end:
 
-- chatgpt: 86279
-- mistral: 52650
-- gemma: 49627 (Gemini-based model)
-- llama: 50800
-- human: 139676
+```bash
+python src/dataset/build_all_records.py --min-words 100 --max-words 150
+```
 
-### From Sources
+What this script does:
 
-- HC3 samples: 197552
-- GSINGH1 samples: 60161
-- OTB samples: 121319
+- builds source-specific intermediate files:
+  - `datasets/hc3/hc3-records.json`
+  - `datasets/gsingh1/gsingh1-records.json`
+  - `datasets/otb/otb-records.json`
+- writes the final long-text dataset to:
+  - `datasets/records_long.json`
+- keeps only records where word count satisfies:
+  - `min_words < words < max_words`
 
-**Total samples:** 379032
+Optional flags:
+
+```bash
+# Download OTB / GSINGH1 source files first (when available)
+python src/dataset/build_all_records.py --download-sources
+
+# Custom long-text word range
+python src/dataset/build_all_records.py --min-words 100 --max-words 150
+```
+
+Download behavior:
+
+- if `datasets/otb/all.json` already exists, OTB download is skipped
+- if `datasets/gsingh1/all.json` already exists, GSINGH1 download is skipped
+
+---
+
+---
 
 ### Entries (`records_long.json`)
 
-- mistral: 80,999
-- chatgpt: 35,167
-- gemma: 69,056
-- llama: 85,616
-- human: 49,517
+Generated with:
+
+```bash
+python src/dataset/build_all_records.py --min-words 100 --max-words 150
+```
+
+Class distribution:
+
+- human: 55276
+- chatgpt: 49981
+- mistral: 79431
+- gemma: 67864
+- llama: 82865
 
 ### From Sources
 
-- HC3 samples: 84,684 
-- OTB samples: 235,671
+- HC3 samples: 62149
+- GSINGH1 samples: 85508
+- OTB samples: 187760
 
-**Total samples:** 320,355
-
+**Total samples:** 335417
 
 ---
 
@@ -63,30 +93,30 @@ https://huggingface.co/datasets/gsingh1-py/train
   "model": "chatgpt,human,mistral,llama,gemma",
   "text": "afioweogwHO",
   "topic": "chemistry, physics,...",
-  "length": 120,
-  "origin": "hc3 or gsingh1"
+  "length": 520,
+  "origin": "hc3, gsingh1 or otb"
 }
 ```
 
 | Field | Description |
 |------|-------------|
-| model | label indicating the generating model or human |
-| text | the text sample |
-| topic | topic category |
-| length | text length |
-| origin | dataset source |
+| `model` | label indicating the generating model or human |
+| `text` | the text sample |
+| `topic` | topic category |
+| `length` | text length |
+| `origin` | dataset source |
 
 ---
 
 ## Models
 
-### TF-IDF
+### A. TF-IDF + Logistic Regression (NumPy)
 
-The current baseline model uses **TF-IDF feature extraction combined with a multiclass logistic regression classifier** implemented in NumPy.
+This baseline uses **TF-IDF feature extraction combined with a multiclass softmax logistic regression classifier** implemented from scratch in NumPy.
 
 #### Classification Pipeline
 
-```
+```text
 text
  ↓
 tokenization
@@ -97,6 +127,8 @@ TF-IDF feature extraction
  ↓
 feature concatenation
  ↓
+length feature
+ ↓
 softmax logistic regression
  ↓
 model prediction
@@ -104,7 +136,7 @@ model prediction
 
 The classifier predicts one of five classes:
 
-```
+```text
 human
 chatgpt
 mistral
@@ -112,43 +144,40 @@ gemma
 llama
 ```
 
----
-
 #### Feature Representation
 
 Two TF-IDF feature spaces are constructed.
 
 ##### Word n-grams
 
-- `ngram_range = (1,2)`
+- `ngram_range = (1, 2)`
 - captures vocabulary usage and short phrases
 
 Example:
 
-```
-tokens = ["this", "is", "ai"] 
+```text
+tokens = ["this", "is", "ai"]
 unigrams: "this" "is" "ai"
 bigrams: "this is" "is ai"
 ```
 
 ##### Character n-grams
 
-- `ngram_range = (3,5)`
+- `ngram_range = (2, 6)`
 - captures stylistic patterns such as punctuation, whitespace usage, and tokenization artifacts
 
 Example:
 
-```
+```text
 text = "text"
+2-grams: "te" "ex" "xt"
 3-grams: "tex" "ext"
 4-grams: "text"
 ```
 
----
-
 #### Classifier
 
-The classifier is a **multiclass softmax logistic regression model** trained with:
+The classifier is trained with:
 
 - cross-entropy loss
 - L2 regularization
@@ -156,7 +185,7 @@ The classifier is a **multiclass softmax logistic regression model** trained wit
 
 The model learns the linear mapping:
 
-```
+```text
 logits = XW + b
 ```
 
@@ -168,15 +197,13 @@ Where:
 
 Softmax converts logits into probabilities for each class.
 
----
-
 #### Model Storage
 
 After training, the model is serialized using `pickle`.
 
 The saved model contains:
 
-```
+```text
 W           classifier weights
 b           classifier bias
 word_vocab  word TF-IDF vocabulary
@@ -187,123 +214,108 @@ char_idf    character IDF values
 
 Saved models are stored in:
 
-```
+```text
 models/
 ```
 
 Example filename:
 
-```
-models/tfidf_logreg_size100000_word10000_char10000.pkl
-```
-
----
-
-### Project Structure
-
-```
-DL-AITextClassifier
-│
-├── datasets/
-│   └── records.json
-│
-├── models/
-│   └── saved trained models (.pkl)
-│
-├── src/
-│   │
-│   ├── dataloader/
-│   │   └── dataloader.py
-│   │
-│   ├── tfidf/
-│   │   └── tfidf.py
-│   │
-│   ├── models/
-│   │   └── logreg.py
-│   │
-│   └── train/
-│       └── train.py
-│
-├── tests/
-│   ├── test_tfidf.py
-│   └── test_softmax_logreg.py
-│
-└── README.md
+```text
+models/subm1-g5-MEI-A.pkl
 ```
 
 ---
 
-### Training
+### B. TF-IDF + Logistic Regression (PyTorch)
 
-Run the training pipeline with and set the hyperparameters in this file:
+A second submission model uses the same **TF-IDF feature representation**, but the classifier is implemented in **PyTorch** instead of NumPy.
 
-```
-python -m src.train.train_logreg
-```
-
-This will:
-
-1. load the dataset
-2. build TF-IDF features
-3. train the logistic regression classifier
-4. evaluate on the test set
-5. store the trained model in `models/`
+This model is used for the `subm1-g5-MEI-B` submission.
 
 ---
 
-## Build Datasets With One Script
+## Baseline Performance
 
-Use one script to generate `datasets/records_long.json` end-to-end:
+Current best result for the NumPy TF-IDF + logistic regression model:
 
-```bash
-python src/dataset/build_all_records.py
-```
-
-What this script does:
-
-- builds source-specific intermediate files:
-  - `datasets/hc3/hc3-records.json`
-  - `datasets/gsingh1/gsingh1-records.json` (only if source exists)
-  - `datasets/otb/otb-records.json`
-- writes final long-text dataset to:
-  - `datasets/records_long.json`
-- keeps only records where word count satisfies:
-  - `min_words < words < max_words` (defaults: 80 and 200)
-
-Optional flags:
-
-```bash
-# Download OTB/GSINGH1 source files first (when available)
-python src/dataset/build_all_records.py --download-sources
-
-# Custom long-text word range
-python src/dataset/build_all_records.py --min-words 100 --max-words 220
-```
-
-Download behavior:
-
-- if `datasets/otb/all.json` already exists, OTB download is skipped
-- if `datasets/gsingh1/all.json` already exists, GSINGH1 download is skipped
-
----
-
-### Baseline Performance
-
-Current best result with this configuration:
-
-```
-dataset size: 100000
-word features: 15000
-char features: 15000
+```text
+size: 100000
+word_max_features: 15000
+char_max_features: 15000
+min_df: 2
+word_ngram_range: (1, 2)
+char_ngram_range: (2, 6)
+lr: 0.3
 epochs: 40
-word_ngram_range = (1,2)
-char_ngram_range = (2,6)
-lr = 0.3
 ```
 
 Test accuracy:
 
-```
-≈ 0.61
+```text
+≈ 0.81
 ```
 
+---
+
+## Project Structure
+
+```text
+DL-AITextClassifier
+│
+├── datasets/
+│   ├── records_long.json
+│
+├── models/
+│   └── subm1-g5-MEI-A.pkl
+│
+├── notebooks/
+│   ├── logReg_tfidf.ipynb
+│
+├── src/
+│   ├── dataloader/
+│   │   ├── __init__.py
+│   │   └── dataloader.py
+│   │
+│   ├── dataset/
+│   │   ├── build_all_records.py
+│   │
+│   ├── models/
+│   │   ├── gru_numpy/
+│   │   ├── __init__.py
+│   │   ├── gru_pytorch.py
+│   │   └── logreg.py
+│   │
+│   ├── text_embedding/
+│   │   ├── __init__.py
+│   │   ├── base_embedding.py
+│   │   ├── ngram_embedding.py
+│   │   └── word_embedding.py
+│   │
+│   ├── tfidf/
+│   │   ├── __init__.py
+│   │   └── tfidf.py
+│   │
+│   └── train/
+│       ├── __init__.py
+│       └── train_logreg.py
+│
+├── Subm1/
+│   ├── subm1-g5-MEI-A.csv
+│   ├── subm1-g5-MEI-A.ipynb
+│   ├── subm1-g5-MEI-B.csv
+│   └── subm1-g5-MEI-B.ipynb
+│
+├── tests/
+│   ├── TestData/
+│   ├── __init__.py
+│   ├── test_numpy_gru.py
+│   ├── test_softmax_logreg.py
+│   └── test_tfidf.py
+│
+├── .gitignore
+├── __init__.py
+├── INSTRUCTIONS_EN.md
+├── README.md
+├── requirements.txt
+└── results.txt
+```
