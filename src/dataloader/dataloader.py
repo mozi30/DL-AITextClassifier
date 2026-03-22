@@ -10,8 +10,9 @@ MODEL_MAP = {
     "human": 0,
     "chatgpt": 1,
     "gemma": 2,
-    "mistral": 3,
-    "llama": 4
+    #"mistral": 3,
+    "anthropic": 4,
+    "llama": 4,
 }
 
 class SentenceDataLoader:

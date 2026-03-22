@@ -14,14 +14,14 @@ category_keywords = {
     category: [keyword.lower() for keyword in keywords]
     for category, keywords in keywords_data.items()
 }
-
+questions = []
 hc3_file_path = "../../datasets/hc3/all.jsonl"
 hc3_content = []
 with open(hc3_file_path) as f:
     for line in f:
         record = json.loads(line)
         question = record.get("question", "").lower()
-
+        questions.append(question)
         # HC3 records usually store answer arrays; support both arrays and strings.
         human_answers = record.get("human_answers", [])
         chatgpt_answers = record.get("chatgpt_answers", [])
@@ -95,10 +95,13 @@ for line in hc3_content:
         output_record.extend(answer_to_json(answer, "chatgpt", topic_value))
     break
 
-output_record_path = "../../datasets/hc3/hc3-records.json"
-with open(output_record_path, "w") as f:
-    json.dump(output_record, f, indent=2)
+# output_record_path = "../../datasets/hc3/hc3-records.json"
+# with open(output_record_path, "w") as f:
+#     json.dump(output_record, f, indent=2)
 
-print(f"Converted {len(output_record)} sentence records and saved to {output_record_path}")
+# print(f"Converted {len(output_record)} sentence records and saved to {output_record_path}")
 
+output_question_path = "../../datasets/hc3/hc3-records_questions.json"
+with open(output_question_path, "w") as f:
+    json.dump(questions, f, indent=2)
     
