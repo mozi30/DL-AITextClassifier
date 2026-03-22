@@ -3,6 +3,13 @@ import json
 import re
 from pathlib import Path
 
+# Support both package execution (python -m src.dataset.build_all_records)
+# and direct script execution from this folder (python build_all_records.py).
+try:  # package context
+    from .anthropic_build_json import build_anthropic_records
+except ImportError:  # script context, no known parent package
+    from anthropic_build_json import build_anthropic_records
+
 
 def split_sentences(text: str) -> list[str]:
     sentences = re.split(r"(?<=[.!?])\s+", text)
@@ -11,6 +18,16 @@ def split_sentences(text: str) -> list[str]:
 
 def word_count(text: str) -> int:
     return len(re.findall(r"\b\w+\b", text))
+
+
+def split_text_by_words(text: str, max_words: int) -> list[str]:
+    """Split text into chunks of at most max_words."""
+    words = text.split()
+    chunks = []
+    for i in range(0, len(words), max_words):
+        chunk = " ".join(words[i:i + max_words])
+        chunks.append(chunk)
+    return chunks
 
 
 def build_passages(sentences: list[str], min_words: int, max_words: int) -> list[str]:
@@ -23,28 +40,82 @@ def build_passages(sentences: list[str], min_words: int, max_words: int) -> list
         if s_words == 0:
             continue
 
+        # If a single sentence is too long, split it into word chunks
         if s_words >= max_words:
+            # First, save current passage if it meets criteria
+            if min_words <= current_words <= max_words:
+                passages.append(" ".join(current))
+            current = []
+            current_words = 0
+            
+            # Split the long sentence into chunks
+            chunks = split_text_by_words(sentence, max_words)
+            for chunk in chunks:
+                chunk_words = word_count(chunk)
+                if min_words <= chunk_words <= max_words:
+                    passages.append(chunk)
             continue
 
-        if current_words + s_words >= max_words:
-            if min_words < current_words < max_words:
+        # If adding this sentence would exceed max_words, save current and start new
+        if current_words + s_words > max_words:
+            if min_words <= current_words <= max_words:
                 passages.append(" ".join(current))
             current = [sentence]
             current_words = s_words
             continue
 
+        # Add sentence to current passage
         current.append(sentence)
         current_words += s_words
 
-        if min_words < current_words < max_words:
-            passages.append(" ".join(current))
-            current = []
-            current_words = 0
-
-    if min_words < current_words < max_words:
+    # Don't forget the last passage
+    if min_words <= current_words <= max_words:
         passages.append(" ".join(current))
 
     return passages
+
+
+def refine_passages(passages: list[str], min_words: int, max_words: int) -> list[str]:
+    """Further split passages that exceed max_words into multiple chunks with varied sizes for better distribution."""
+    refined: list[str] = []
+    for passage in passages:
+        p_words = word_count(passage)
+        if p_words > max_words:
+            words = passage.split()
+            # Calculate number of chunks needed
+            num_chunks = (p_words + max_words - 1) // max_words
+            
+            # Distribute words across chunks with varying target sizes
+            # This creates better distribution across the min-max range
+            target_sizes = []
+            for i in range(num_chunks):
+                # Vary target size across the range: min_words to max_words
+                ratio = i / max(1, num_chunks - 1) if num_chunks > 1 else 0.5
+                target_size = int(min_words + (max_words - min_words) * ratio)
+                target_sizes.append(target_size)
+            
+            # Create chunks based on target sizes
+            word_idx = 0
+            for target_size in target_sizes:
+                if word_idx >= len(words):
+                    break
+                # Take roughly target_size words, but allow some flexibility
+                chunk_end = min(word_idx + target_size, len(words))
+                chunk = " ".join(words[word_idx:chunk_end])
+                chunk_words = word_count(chunk)
+                if min_words <= chunk_words <= max_words:
+                    refined.append(chunk)
+                word_idx = chunk_end
+            
+            # Handle any remaining words that didn't fit into target chunks
+            if word_idx < len(words):
+                remainder = " ".join(words[word_idx:])
+                remainder_words = word_count(remainder)
+                if min_words <= remainder_words <= max_words:
+                    refined.append(remainder)
+        else:
+            refined.append(passage)
+    return refined
 
 
 def clean_text(text: str) -> str:
@@ -80,12 +151,14 @@ def map_model(model_name: str | None) -> str | None:
 
     if "gemma" in m or "gemini" in m or "google" in m:
         return "gemma"
-    if "mistral" in m:
-        return "mistral"
+    # if "mistral" in m:
+    #     return "mistral"
     if "llama" in m:
         return "llama"
     if "gpt" in m or "openai" in m:
         return "chatgpt"
+    if "anthropic" in m or "claude" in m:
+        return "anthropic"
     if "human" in m:
         return "human"
 
@@ -155,7 +228,7 @@ def build_hc3_records(
 
             for answer in human_answers:
                 text = clean_text(str(answer))
-                passages = build_passages(split_sentences(text), min_words, max_words)
+                passages = refine_passages(build_passages(split_sentences(text), min_words, max_words), min_words, max_words)
                 for p in passages:
                     output_records.append(
                         {
@@ -163,13 +236,13 @@ def build_hc3_records(
                             "text": p,
                             "topic": topic,
                             "origin": "HC3",
-                            "length": len(p),
+                            "length": word_count(p),
                         }
                     )
 
             for answer in chatgpt_answers:
                 text = clean_text(str(answer))
-                passages = build_passages(split_sentences(text), min_words, max_words)
+                passages = refine_passages(build_passages(split_sentences(text), min_words, max_words), min_words, max_words)
                 for p in passages:
                     output_records.append(
                         {
@@ -177,7 +250,7 @@ def build_hc3_records(
                             "text": p,
                             "topic": topic,
                             "origin": "HC3",
-                            "length": len(p),
+                            "length": word_count(p),
                         }
                     )
 
@@ -194,23 +267,40 @@ def build_otb_records(
     output_path: Path,
     min_words: int,
     max_words: int,
+    topic_key: str | None = None,
+    skip_unknown_topic: bool = False,
+    enforce_word_bounds: bool = True,
 ) -> list[dict]:
     with input_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
-
+        
     records: list[dict] = []
-
+    
     for row in data:
         model = map_model(row.get(model_key))
         if model is None:
             continue
-
+        
         text = clean_text(str(row.get(text_key, "")))
-        passages = build_passages(split_sentences(text), min_words, max_words)
+        if enforce_word_bounds:
+            passages = refine_passages(build_passages(split_sentences(text), min_words, max_words), min_words, max_words)
+        else:
+            if word_count(text) > max_words:
+                passages = split_text_by_words(text, max_words)
+            else:
+                passages = [text] if text else []
 
         for p in passages:
-            topic = classify_topic(p, keywords)
+            topic = "unknown"
+            if topic_key:
+                raw_topic = row.get(topic_key)
+                if isinstance(raw_topic, list):
+                    topic = str(raw_topic[0]).strip() if raw_topic else "unknown"
+                elif isinstance(raw_topic, str):
+                    topic = raw_topic.strip() if raw_topic.strip() else "unknown"
             if topic == "unknown":
+                topic = classify_topic(p, keywords)
+            if (not skip_unknown_topic) and topic == "unknown":
                 continue
             records.append(
                 {
@@ -218,10 +308,9 @@ def build_otb_records(
                     "text": p,
                     "topic": topic,
                     "origin": origin,
-                    "length": len(p),
+                    "length": word_count(p),
                 }
             )
-
     write_json(output_path, records)
     return records
 
@@ -291,7 +380,7 @@ def build_gsingh1_records(
 
 
 def summarize(records: list[dict], name: str) -> None:
-    counter = {"human": 0, "chatgpt": 0, "mistral": 0, "gemma": 0, "llama": 0}
+    counter = {"human": 0, "chatgpt": 0, "mistral": 0, "gemma": 0, "llama": 0, "anthropic": 0}
     for r in records:
         model = r.get("model")
         if model in counter:
@@ -303,10 +392,11 @@ def summarize(records: list[dict], name: str) -> None:
     print(f"{name} mistral: {counter['mistral']}")
     print(f"{name} gemma: {counter['gemma']}")
     print(f"{name} llama: {counter['llama']}")
+    print(f"{name} anthropic: {counter['anthropic']}")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build records JSON files from HC3/GSINGH1/OTB in one run.")
+    parser = argparse.ArgumentParser(description="Build records JSON files from HC3/GSINGH1/OTB/Anthropic in one run.")
     parser.add_argument("--download-sources", action="store_true", help="Download source all.json files for OTB and GSINGH1.")
     parser.add_argument("--min-words", type=int, default=80)
     parser.add_argument("--max-words", type=int, default=200)
@@ -320,10 +410,12 @@ def main() -> int:
     hc3_jsonl = datasets_dir / "hc3" / "all.jsonl"
     gsingh1_all = datasets_dir / "gsingh1" / "all.json"
     otb_all = datasets_dir / "otb" / "all.json"
+    anthropic_all = datasets_dir / "anthropic" / "all.json"
 
     hc3_records_path = datasets_dir / "hc3" / "hc3-records.json"
     gsingh1_records_path = datasets_dir / "gsingh1" / "gsingh1-records.json"
     otb_records_path = datasets_dir / "otb" / "otb-records.json"
+    anthropic_records_path = datasets_dir /"anthropic" / "anthropic-records.json"
     combined_long_path = datasets_dir / "records_long.json"
 
     if args.download_sources:
@@ -355,6 +447,21 @@ def main() -> int:
             f"Missing OTB source file: {otb_all}. Use --download-sources or run src/dataset/otb_load_data.py first."
         )
 
+    # For Anthropic, if the precomputed anthropic-records.json does not
+    # exist yet, automatically build it using the same logic as the
+    # anthropic_build_json script (typically from the Claude multiround
+    # chat dataset).
+    if not anthropic_records_path.exists():
+        print("Anthropic records file missing, building it now ...")
+        claude_multiround_path = datasets_dir / "anthropic" / "claude_multiround_chat_30k.json"
+        build_anthropic_records(
+            input_path=claude_multiround_path,
+            keywords_path=datasets_dir / "keywords.json",
+            output_path=anthropic_records_path,
+            min_words=args.min_words,
+            max_words=args.max_words,
+        )
+
     print("Building HC3 records...")
     hc3_records = build_hc3_records(hc3_jsonl, keywords, hc3_records_path, args.min_words, args.max_words)
 
@@ -383,16 +490,17 @@ def main() -> int:
         max_words=args.max_words,
     )
 
-    combined = hc3_records + gsingh1_records + otb_records
+    print("Loading Anthropic records ...")
+    with anthropic_records_path.open("r", encoding="utf-8") as f:
+        anthropic_records = json.load(f)
+    
+    
+    combined = hc3_records + gsingh1_records + otb_records + anthropic_records 
 
-    combined_long = [r for r in combined if args.min_words < word_count(r["text"]) < args.max_words]
+    combined_long = [r for r in combined if args.min_words <= word_count(r["text"]) <= args.max_words]
     write_json(combined_long_path, combined_long)
     summarize(combined_long, "LONG")
     print(f"Wrote: {combined_long_path}")
-
-    summarize(hc3_records, "HC3")
-    summarize(gsingh1_records, "GSINGH1")
-    summarize(otb_records, "OTB")
 
     return 0
 
