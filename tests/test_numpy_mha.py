@@ -12,6 +12,8 @@ from src.models.gru_numpy import DenseLayer, MultiHeadAttentionLayer, EmbeddingL
 if __name__ == '__main__':
     seed = 42
     record_path = str(ROOT / "datasets" / "records_long.json")
+    
+    # -------------- Insert mha weights path here -----------------------
     weights_path = str(ROOT / "cache" / "numpy_mha_trained.pkl")
     current_epoch_weights_path = str(ROOT / "cache" / "numpy_mha_current_epoch.pkl")
     best_epoch_weights_path = str(ROOT / "cache" / "numpy_mha_best_epoch.pkl")

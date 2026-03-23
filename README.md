@@ -36,9 +36,10 @@ What this script does:
   - `datasets/hc3/hc3-records.json`
   - `datasets/gsingh1/gsingh1-records.json`
   - `datasets/otb/otb-records.json`
+  - `datasets/anthropic/anthropic-records.json`
 - writes the final long-text dataset to:
   - `datasets/records_long.json`
-- keeps only records where word count satisfies:
+- builds records where word count satisfies:
   - `min_words < words < max_words`
 
 Optional flags:
@@ -257,10 +258,40 @@ Test accuracy:
 
 ---
 
+### C. DNN with MultiHeadAttention
+
+This model uses ether Word Encoding or NgramEncoding for text representation combined with a deep neuronal network approach thats making use of Multi Head Attention to get better understanding of text structure and dependencies. 
+
+The model implementation can be found under:
+
+```bash
+src/models/gru_numpy
+```
+
+To run the model with pretrained weights use the command
+```python
+ net.load_weights(weights_path)
+```
+
+A test implementation can be found in 
+
+```bash
+tests/test_numpy_mha.py
+```
+
+Test accuracy:
+
+```text
+0.787
+```
+
 ## Project Structure
 
 ```text
 DL-AITextClassifier
+│
+├── cache/
+│   ├── numpy_mha_trained.pkl
 │
 ├── datasets/
 │   ├── records_long.json
