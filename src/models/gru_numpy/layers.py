@@ -699,46 +699,27 @@ class MultiHeadAttentionLayer(Layer):
         return exp_x / np.sum(exp_x, axis=axis, keepdims=True)
 
     def _softmax_backward(self, grad_output, softmax_output):
-        """
-        grad_output, softmax_output: same shape (..., T)
-        softmax jacobian-vector product:
-            dL/dz = s * (g - sum(g*s))
-        """
         dot = np.sum(grad_output * softmax_output, axis=-1, keepdims=True)
         return softmax_output * (grad_output - dot)
 
     def _split_heads(self, x):
-        """
-        x: (B, T, D)
-        -> (B, H, T, Hd)
-        """
         B, T, D = x.shape
         x = x.reshape(B, T, self.num_heads, self.head_dim)
         return np.transpose(x, (0, 2, 1, 3))
 
     def _combine_heads(self, x):
-        """
-        x: (B, H, T, Hd)
-        -> (B, T, D)
-        """
         B, H, T, Hd = x.shape
         x = np.transpose(x, (0, 2, 1, 3))
         return x.reshape(B, T, H * Hd)
 
     def forward_propagation(self, input, training):
-        """
-        input:
-            (T, F) or (B, T, F)
-        output:
-            same rank, with last dim = model_dim
-        """
         if training:
             self.input = input
             
         self.input_was_2d = (input.ndim == 2)
 
         if input.ndim == 2:
-            x = input[np.newaxis, :, :]   # (1, T, F)
+            x = input[np.newaxis, :, :]
         elif input.ndim == 3:
             x = input
         else:
@@ -748,26 +729,26 @@ class MultiHeadAttentionLayer(Layer):
         B, T, F = x.shape
 
         # Linear projections
-        self.Q = x @ self.W_q + self.b_q     # (B, T, D)
+        self.Q = x @ self.W_q + self.b_q
         self.K = x @ self.W_k + self.b_k
         self.V = x @ self.W_v + self.b_v
 
         # Split heads
-        self.Qh = self._split_heads(self.Q)  # (B, H, T, Hd)
+        self.Qh = self._split_heads(self.Q)
         self.Kh = self._split_heads(self.K)
         self.Vh = self._split_heads(self.V)
 
         # Scaled dot-product attention
         self.scale = np.sqrt(self.head_dim)
         self.scores = np.matmul(self.Qh, np.transpose(self.Kh, (0, 1, 3, 2))) / self.scale
-        self.attn = self._softmax(self.scores, axis=-1)   # (B, H, T, T)
+        self.attn = self._softmax(self.scores, axis=-1)
 
         # Weighted sum
-        self.context_h = np.matmul(self.attn, self.Vh)    # (B, H, T, Hd)
-        self.context = self._combine_heads(self.context_h)  # (B, T, D)
+        self.context_h = np.matmul(self.attn, self.Vh)
+        self.context = self._combine_heads(self.context_h)
 
         # Final projection
-        self.output = self.context @ self.W_o + self.b_o  # (B, T, D)
+        self.output = self.context @ self.W_o + self.b_o
 
         if self.input_was_2d:
             return self.output[0]
