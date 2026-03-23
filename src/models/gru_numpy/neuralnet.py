@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import pickle
+from pathlib import Path
 
 import numpy as np
 
@@ -23,7 +25,9 @@ class NeuralNetwork:
                  min_learning_rate=1e-5,
                  restore_best_weights=True,
                  num_train_epoch_batches: int | None = None,
-                 num_val_epoch_batches: int | None = None):
+                 num_val_epoch_batches: int | None = None,
+                 save_current_epoch_weights_path: str | None = None,
+                 save_best_epoch_weights_path: str | None = None):
         self.train_loader = datamodule.get_train_loader()
         self.val_loader = datamodule.get_val_loader()
         self.test_loader = datamodule.get_test_loader()
@@ -40,6 +44,8 @@ class NeuralNetwork:
         self.restore_best_weights = restore_best_weights
         self.num_train_epoch_batches = num_train_epoch_batches
         self.num_val_epoch_batches = num_val_epoch_batches
+        self.save_current_epoch_weights_path = save_current_epoch_weights_path
+        self.save_best_epoch_weights_path = save_best_epoch_weights_path
 
         self.layers = []
         self.history = {}
@@ -177,9 +183,14 @@ class NeuralNetwork:
                 best_layers = copy.deepcopy(self.layers)
                 epochs_without_improvement = 0
                 lr_plateau_epochs = 0
+                if self.save_best_epoch_weights_path:
+                    self.save_weights(self.save_best_epoch_weights_path)
             else:
                 epochs_without_improvement += 1
                 lr_plateau_epochs += 1
+
+            if self.save_current_epoch_weights_path:
+                self.save_weights(self.save_current_epoch_weights_path)
 
             if self.lr_patience is not None and lr_plateau_epochs >= self.lr_patience:
                 new_lr = max(self.optimizer.learning_rate * self.lr_decay_factor, self.min_learning_rate)
@@ -222,3 +233,50 @@ class NeuralNetwork:
         if self.metric is not None:
             return self.metric(labels, predictions)
         raise ValueError("No metric specified for the neural network.")
+
+    def save_weights(self, path: str):
+        checkpoint_path = Path(path)
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+
+        layer_states = []
+        for layer in self.layers:
+            layer_states.append({
+                "layer_name": layer.layer_name(),
+                "weights": layer.get_weights() if hasattr(layer, "get_weights") else {},
+            })
+
+        payload = {
+            "layer_states": layer_states,
+        }
+
+        with open(checkpoint_path, "wb") as f:
+            pickle.dump(payload, f)
+
+    def load_weights(self, path: str, strict: bool = True):
+        checkpoint_path = Path(path)
+        with open(checkpoint_path, "rb") as f:
+            payload = pickle.load(f)
+
+        layer_states = payload.get("layer_states", [])
+
+        if strict and len(layer_states) != len(self.layers):
+            raise ValueError(
+                f"Checkpoint has {len(layer_states)} layers, but model has {len(self.layers)} layers."
+            )
+
+        for idx, layer in enumerate(self.layers):
+            if idx >= len(layer_states):
+                break
+
+            state = layer_states[idx]
+            expected_name = layer.layer_name()
+            saved_name = state.get("layer_name")
+            if strict and saved_name != expected_name:
+                raise ValueError(
+                    f"Layer mismatch at index {idx}: checkpoint has {saved_name}, model has {expected_name}."
+                )
+
+            if hasattr(layer, "set_weights"):
+                layer.set_weights(state.get("weights", {}))
+
+        return self

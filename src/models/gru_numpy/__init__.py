@@ -1,4 +1,4 @@
-from .layers import DenseLayer, GRULayer, EmbeddingLayer, BiGRULayer, SequenceMeanMaxPool, DropoutLayer
+from .layers import DenseLayer, GRULayer, EmbeddingLayer, BiGRULayer, SequenceMeanMaxPool, DropoutLayer, MultiHeadAttentionLayer
 from .activation import SigmoidActivation,SoftmaxActivation
 from .neuralnet import NeuralNetwork
 from .losses import CrossEntropyLoss

@@ -7,14 +7,16 @@ if str(ROOT) not in sys.path:
 
 from src.text_embedding import NgramEmbedding
 from src.dataloader import SentenceDataModule
-from src.models.gru_numpy import DenseLayer, BiGRULayer, EmbeddingLayer, SequenceMeanMaxPool, DropoutLayer, NeuralNetwork, CrossEntropyLoss, SoftmaxActivation, accuracy 
+from src.models.gru_numpy import DenseLayer, MultiHeadAttentionLayer, EmbeddingLayer, SequenceMeanMaxPool, DropoutLayer, NeuralNetwork, CrossEntropyLoss, SoftmaxActivation, accuracy 
 
 if __name__ == '__main__':
     seed = 42
     record_path = str(ROOT / "datasets" / "records_long.json")
+    
+    # -------------- Insert mha weights path here -----------------------
     weights_path = str(ROOT / "cache" / "numpy_mha_trained.pkl")
-    current_epoch_weights_path = str(ROOT / "cache" / "numpy_gru_current_epoch.pkl")
-    best_epoch_weights_path = str(ROOT / "cache" / "numpy_gru_best_epoch.pkl")
+    current_epoch_weights_path = str(ROOT / "cache" / "numpy_mha_current_epoch.pkl")
+    best_epoch_weights_path = str(ROOT / "cache" / "numpy_mha_best_epoch.pkl")
     
     
     # training data
@@ -43,14 +45,13 @@ if __name__ == '__main__':
     )
     
     net.add(EmbeddingLayer(embedding=embedding))
-    net.add(BiGRULayer(num_input=embedding_size, num_hidden=64, return_sequences=True))
+    net.add(MultiHeadAttentionLayer(num_heads=4,model_dim=embedding_size, seed=seed))
     net.add(SequenceMeanMaxPool())
     net.add(DropoutLayer(rate=0.3, seed=seed))
     net.add(DenseLayer(5))
     net.add(SoftmaxActivation())
 
     net.load_weights(weights_path)
-    
     # train
     # net.fit()
     # net.save_weights(weights_path)
