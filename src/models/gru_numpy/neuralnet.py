@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import csv
 import pickle
 from pathlib import Path
 
@@ -11,6 +12,15 @@ from src.models.gru_numpy.losses import MeanSquaredError
 from src.models.gru_numpy.metrics import mse
 from src.models.gru_numpy.optimizer import Optimizer
 from src.dataloader import SentenceDataModule, SentenceDataLoader
+
+
+ID_TO_VENDOR = {
+    0: "Human",
+    1: "OpenAI",
+    2: "Google",
+    3: "Anthropic",
+    4: "Meta",
+}
 
 
 class NeuralNetwork:
@@ -224,6 +234,57 @@ class NeuralNetwork:
         for texts, _ in self.get_dataload_mini_batch(target_loader, shuffle=False):
             predictions.append(self.forward_propagation(texts, training=False))
         return np.concatenate(predictions)
+
+    def predict_texts(self, texts, batch_size=None):
+        if not texts:
+            return np.array([])
+
+        if batch_size is None:
+            batch_size = self.batch_size or len(texts)
+
+        outputs = []
+        for start in range(0, len(texts), batch_size):
+            batch = texts[start:start + batch_size]
+            outputs.append(self.forward_propagation(batch, training=False))
+        return np.concatenate(outputs)
+
+    def predict_evaluation_subm2(self, input_csv: str = "datasets/evaluation/subm2.csv", output_csv: str | None = None,
+                                  batch_size: int | None = None):
+        """Run the GRU model on evaluation/subm2.csv and map outputs to vendor labels.
+
+        The input CSV is expected to have columns "ID" and "Text" and to use
+        ';' as a separator. Predictions are mapped using ID_TO_VENDOR, i.e.:
+        0 -> Human, 1 -> OpenAI, 2 -> Google, 3 -> Anthropic, 4 -> Meta.
+
+        If output_csv is provided, a submission-style CSV with columns
+        ID,Label is written similar to subm2/subm2-g5-MEI-B.csv.
+        """
+        ids: list[str] = []
+        texts: list[str] = []
+
+        with open(input_csv, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f, delimiter=";")
+            for row in reader:
+                ids.append(row["ID"])
+                texts.append(row["Text"])
+
+        outputs = self.predict_texts(texts, batch_size=batch_size)
+        if outputs.ndim == 1:
+            pred_ids = (outputs > 0.5).astype(int)
+        else:
+            pred_ids = np.argmax(outputs, axis=1)
+
+        labels = [ID_TO_VENDOR.get(int(idx), "Unknown") for idx in pred_ids]
+
+        if output_csv is not None:
+            output_path = Path(output_csv)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["ID", "Label"])
+                writer.writerows(zip(ids, labels))
+
+        return ids, labels
 
     def score(self, predictions=None, loader=None):
         target_loader = loader or self.test_loader

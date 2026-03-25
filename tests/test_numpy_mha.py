@@ -52,9 +52,9 @@ if __name__ == '__main__':
     net.add(SoftmaxActivation())
 
     net.load_weights(weights_path)
-    # train
-    # net.fit()
-    # net.save_weights(weights_path)
+    #train
+    net.fit()
+    net.save_weights(weights_path)
 
     # test
     out = net.predict()

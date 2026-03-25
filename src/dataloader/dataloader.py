@@ -11,7 +11,7 @@ MODEL_MAP = {
     "chatgpt": 1,
     "gemma": 2,
     #"mistral": 3,
-    "anthropic": 4,
+    "anthropic": 3,
     "llama": 4,
 }
 
@@ -165,7 +165,7 @@ class SentenceDataModule:
             topic = raw["topic"]
             origin = raw["origin"]
 
-            length = len(text)
+            length = raw["length"]
 
             sample = {
                 "id": sample_id,
