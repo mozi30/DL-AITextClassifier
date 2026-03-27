@@ -8,30 +8,23 @@ def evaluate_against_revealed(
     sep: str = ";",
     normalize_labels: bool = True,
 ) -> dict:
-    """
-    Evaluate a prediction CSV against all *_labels_revealed.csv files
-    in the same folder by matching on ID.
-
-    Expected columns in prediction and revealed files:
-        ID;...;Label
-
-    Only rows with IDs present in both prediction file and any revealed file
-    are evaluated.
-    """
     prediction_path = Path(prediction_file)
 
     if not prediction_path.exists():
         raise FileNotFoundError(f"Prediction file not found: {prediction_path}")
 
-    folder = prediction_path.parent
-    revealed_files = sorted(folder.glob("*_labels_revealed.csv"))
+    # Folder where THIS .py file is located
+    script_folder = Path(__file__).resolve().parent
+
+    revealed_files = sorted(script_folder.glob("*_labels_revealed.csv"))
 
     if not revealed_files:
         raise FileNotFoundError(
-            f"No revealed-label files found in folder: {folder}"
+            f"No revealed-label files found in script folder: {script_folder}"
         )
 
-    print(f"\nLoading prediction file: {prediction_path.name}")
+    print(f"\nLoading prediction file: {prediction_path}")
+    print(f"Looking for revealed files in: {script_folder}")
     print("Using revealed files:")
     for rf in revealed_files:
         print(f" - {rf.name}")
@@ -48,9 +41,10 @@ def evaluate_against_revealed(
     df_pred["ID"] = df_pred["ID"].astype(str).str.strip()
 
     if normalize_labels:
-        df_pred["Label_pred"] = df_pred["Label_pred"].astype(str).str.strip().str.lower()
+        df_pred["Label_pred"] = (
+            df_pred["Label_pred"].astype(str).str.strip().str.lower()
+        )
 
-    # Load and combine all revealed files
     revealed_parts = []
     for rf in revealed_files:
         df_true_part = pd.read_csv(rf, sep=sep)
@@ -74,31 +68,19 @@ def evaluate_against_revealed(
 
     df_true = pd.concat(revealed_parts, ignore_index=True)
 
-    # Detect duplicate revealed IDs across files
+    # Avoid duplicate IDs in revealed files
     dup_ids = df_true[df_true["ID"].duplicated(keep=False)].sort_values("ID")
     if not dup_ids.empty:
         print("\nWarning: duplicate IDs found across revealed files.")
         print(dup_ids[["ID", "source_file"]].to_string(index=False))
-        # Keep first occurrence to avoid exploding merge
         df_true = df_true.drop_duplicates(subset="ID", keep="first")
 
-    # Detect duplicate prediction IDs
+    # Avoid duplicate IDs in prediction file
     pred_dups = df_pred[df_pred["ID"].duplicated(keep=False)].sort_values("ID")
     if not pred_dups.empty:
         print("\nWarning: duplicate IDs found in prediction file.")
         print(pred_dups[["ID"]].drop_duplicates().to_string(index=False))
         df_pred = df_pred.drop_duplicates(subset="ID", keep="first")
-
-    pred_ids = set(df_pred["ID"])
-    true_ids = set(df_true["ID"])
-
-    matched_ids = pred_ids & true_ids
-    missing_in_pred = true_ids - pred_ids
-    extra_in_pred = pred_ids - true_ids
-
-    print(f"\nMatched IDs:           {len(matched_ids)}")
-    print(f"Missing predictions:   {len(missing_in_pred)}")
-    print(f"Extra prediction IDs:  {len(extra_in_pred)}")
 
     df_merged = df_true.merge(df_pred, on="ID", how="inner")
 
@@ -111,10 +93,10 @@ def evaluate_against_revealed(
     correct_count = int(df_merged["correct"].sum())
     wrong_count = int((~df_merged["correct"]).sum())
 
-    print(f"\nOverall accuracy:      {accuracy:.4f}")
-    print(f"Correct predictions:   {correct_count}")
-    print(f"Wrong predictions:     {wrong_count}")
-    print(f"Evaluated rows:        {len(df_merged)}")
+    print(f"\nOverall accuracy: {accuracy:.4f}")
+    print(f"Correct predictions: {correct_count}")
+    print(f"Wrong predictions: {wrong_count}")
+    print(f"Evaluated rows: {len(df_merged)}")
 
     per_label_stats = (
         df_merged.groupby("Label_true")
@@ -167,9 +149,6 @@ def evaluate_against_revealed(
         "correct_count": correct_count,
         "wrong_count": wrong_count,
         "evaluated_rows": len(df_merged),
-        "matched_ids": len(matched_ids),
-        "missing_predictions": len(missing_in_pred),
-        "extra_prediction_ids": len(extra_in_pred),
         "per_label_stats": per_label_stats,
         "failure_breakdown": failure_breakdown,
         "confusion_matrix": confusion,
