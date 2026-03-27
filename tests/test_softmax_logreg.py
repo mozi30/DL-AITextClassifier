@@ -1,7 +1,7 @@
 import numpy as np
 
 from src.dataloader.dataloader import SentenceDataModule
-from src.tfidf.tfidf import TfIdfVectorizerNumpy
+from src.text_embedding.tfidf import TfIdfVectorizerNumpy
 from src.models.logreg import SoftmaxLogReg
 
 # load data ------------------------------------------------------------------------------------------------------------

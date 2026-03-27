@@ -91,3 +91,4 @@ htmlcov/
 datasets/*/all.json
 # Generated large dataset artifacts
 datasets/records_long.json
+datasets/otb/
