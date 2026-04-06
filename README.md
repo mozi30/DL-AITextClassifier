@@ -1,12 +1,111 @@
 # AITextClassifier
-
+## Group 5-MEI by Paul Brunner, Francesco Scivoletto, Moritz Zideck
 AITextClassifier is a project for detecting whether a text was written by a **human or by a large language model (LLM)** and, if generated, identifying **which model produced it**.
 
-The current project contains:
-- a **TF-IDF + multiclass logistic regression baseline implemented in NumPy**
-- a **TF-IDF + logistic regression implementation in PyTorch**
-- additional experiments for **embeddings + bidirectional LSTM**
 
+
+## Project Structure
+
+```text
+  DL-AITextClassifier
+  │
+  │
+  ├── datasets/
+  │   ├── keywords.json
+  │   ├── records_long.json
+  │   ├── scheme.json
+  │   ├── anthropic/
+  │   ├── evaluation/
+  │   ├── hc3/
+  │   └── otb/
+  │ 
+  ├── docs/
+  │   └── docs.dl-project-1.tex
+  │
+  ├── models/
+  │
+  ├── notebooks/
+  │   └── LogisticRegression/
+  │       ├── logReg_tfidf.ipynb
+  │       └── evaluations/
+  │           ├── subm1-g5-MEI-A.csv
+  │           ├── subm2-g5-MEI-A.csv
+  │           └── subm2-g5-MEI-A_evaluation_details.csv
+  │
+  ├── src/
+  │   ├── dataloader/
+  │   │   ├── __init__.py
+  │   │   └── dataloader.py
+  │   │
+  │   ├── dataset/
+  │   │   ├── __init__.py
+  │   │   ├── anthropic_build_json.py
+  │   │   ├── build_all_records.py
+  │   │   ├── combine_datasets_to_json.py
+  │   │   ├── get_statistics_dataset.py
+  │   │   ├── gsingh1_build_json.py
+  │   │   ├── gsingh1_load_data.py
+  │   │   ├── hc3_build_json.py
+  │   │   ├── otb_build_json.py
+  │   │   └── otb_load_data.py
+  │   │
+  │   ├── models/
+  │   │   ├── __init__.py
+  │   │   ├── gru_pytorch.py
+  │   │   ├── logreg.py
+  │   │   └── gru_numpy/
+  │   │       ├── __init__.py
+  │   │       ├── activation.py
+  │   │       ├── data.py
+  │   │       ├── layers.py
+  │   │       ├── losses.py
+  │   │       ├── metrics.py
+  │   │       ├── neuralnet.py
+  │   │       └── optimizer.py
+  │   │
+  │   ├── text_embedding/
+  │   │   ├── __init__.py
+  │   │   ├── base_embedding.py
+  │   │   ├── ngram_embedding.py
+  │   │   ├── tfidf.py
+  │   │   └── word_embedding.py
+  │   │
+  │   └── tfidf/
+  │       ├── __init__.py
+  │       └── tfidf.py
+  │
+  ├── Subm1/
+  │   ├── subm1-g5-MEI-A.csv
+  │   ├── subm1-g5-MEI-A.ipynb
+  │   ├── subm1-g5-MEI-B.csv
+  │   └── subm1-g5-MEI-B.ipynb
+  │
+  ├── Subm2/
+  │   ├── subm2-g5-MEI-A.csv
+  │   ├── subm2-g5-MEI-A.ipynb
+  │   ├── subm2-g5-MEI-B.csv
+  │   └── subm2-g5-MEI-B.ipynb
+  │
+  ├── Subm3/
+  │   ├── subm3-g5-MEI-B.csv
+  │   └── subm3-g5-MEI-B.ipynb
+  │
+  ├── tests/
+  │   ├── __init__.py
+  │   ├── test_dataloader.py
+  │   ├── test_numpy_gru.py
+  │   ├── test_numpy_mha.py
+  │   ├── test_softmax_logreg.py
+  │   ├── test_tfidf.py
+  │   └── cache/
+  │       └── ngram_embedding.npz
+  │
+  ├── __init__.py
+  ├── INSTRUCTIONS_SUB1_EN.md
+  ├── INSTRUCTIONS_SUB2_EN.md
+  ├── README.md
+  └── requirements.txt
+```
 ---
 
 ## Used Datasets
@@ -285,68 +384,4 @@ Test accuracy:
 0.787
 ```
 
-## Project Structure
 
-```text
-DL-AITextClassifier
-│
-├── cache/
-│   ├── numpy_mha_trained.pkl
-│
-├── datasets/
-│   ├── records_long.json
-│
-├── models/
-│   └── subm1-g5-MEI-A.pkl
-│
-├── notebooks/
-│   ├── logReg_tfidf.ipynb
-│
-├── src/
-│   ├── dataloader/
-│   │   ├── __init__.py
-│   │   └── dataloader.py
-│   │
-│   ├── dataset/
-│   │   ├── build_all_records.py
-│   │
-│   ├── models/
-│   │   ├── gru_numpy/
-│   │   ├── __init__.py
-│   │   ├── gru_pytorch.py
-│   │   └── logreg.py
-│   │
-│   ├── text_embedding/
-│   │   ├── __init__.py
-│   │   ├── base_embedding.py
-│   │   ├── ngram_embedding.py
-│   │   └── word_embedding.py
-│   │
-│   ├── tfidf/
-│   │   ├── __init__.py
-│   │   └── tfidf.py
-│   │
-│   └── train/
-│       ├── __init__.py
-│       └── train_logreg.py
-│
-├── Subm1/
-│   ├── subm1-g5-MEI-A.csv
-│   ├── subm1-g5-MEI-A.ipynb
-│   ├── subm1-g5-MEI-B.csv
-│   └── subm1-g5-MEI-B.ipynb
-│
-├── tests/
-│   ├── TestData/
-│   ├── __init__.py
-│   ├── test_numpy_gru.py
-│   ├── test_softmax_logreg.py
-│   └── test_tfidf.py
-│
-├── .gitignore
-├── __init__.py
-├── INSTRUCTIONS_EN.md
-├── README.md
-├── requirements.txt
-└── results.txt
-```
